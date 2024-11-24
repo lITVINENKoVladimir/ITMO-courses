@@ -3,5 +3,5 @@
 #  через метод write()
 
 f = open("text.txt" , "w")
-f.write("Hello/n")
+f.write("Hello")
 
