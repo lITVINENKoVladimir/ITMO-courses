@@ -1,110 +1,56 @@
-import psycopg2
+import functools
+import datetime
+import os
 
-conn_params = {
-  "host": "localhost",
-  "database": "поликлиника",
-  "user": "postgres",
-  "password": "123123"
-}
+call_stats = {} # Храним статистику вызовов здесь
 
-conn = psycopg2.connect(**conn_params)
-cur = conn.cursor()
+def count_calls(func):
+    """Декоратор для подсчета вызовов функции."""
+    func_name = func.__name__
+    call_stats[func_name] = {'call_count': 0, 'last_call_time': None}
 
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        call_stats[func_name]['call_count'] += 1
+        call_stats[func_name]['last_call_time'] = datetime.datetime.now()
+        return func(*args, **kwargs)
 
-cur.execute("""
-  CREATE TABLE IF NOT EXISTS Doctors (
-    id SERIAL PRIMARY KEY,
-    lastname VARCHAR(255) NOT NULL,
-    firstname VARCHAR(255) NOT NULL,
-    patronymic VARCHAR(255),
-    specialty VARCHAR(255)
-  );
-""")
+    return wrapper
 
-# Создание таблицы Patients
-cur.execute("""
-  CREATE TABLE IF NOT EXISTS Patients (
-    id SERIAL PRIMARY KEY,
-    lastname VARCHAR(255) NOT NULL,
-    firstname VARCHAR(255) NOT NULL,
-    patronymic VARCHAR(255),
-    birthdate DATE,
-    address VARCHAR(255),
-    has_benefits BOOLEAN
-  );
-""")
-
-# Создание таблицы Schedule
-cur.execute("""
-  CREATE TABLE IF NOT EXISTS Schedule (
-    id SERIAL PRIMARY KEY,
-    doctor_id INTEGER REFERENCES Doctors(id) NOT NULL,
-    appointment_date DATE NOT NULL,
-    appointment_time TIME NOT NULL
-  );
-""")
-
-# Создание таблицы Appointments
-cur.execute("""
-  CREATE TABLE IF NOT EXISTS Appointments (
-    id SERIAL PRIMARY KEY,
-    patient_id INTEGER REFERENCES Patients(id) NOT NULL,
-    schedule_id INTEGER REFERENCES Schedule(id) NOT NULL
-  );
-""")
+def save_stats(filename="debug.log"):
+    """Сохраняет статистику вызовов функций в файл."""
+    with open(filename, "w") as f:
+        for func_name, data in call_stats.items():
+            f.write(f"{func_name},{data['call_count']},{data['last_call_time'].strftime('%d.%m.%Y %H:%M') 
+             if data['last_call_time'] 
+             else 'Never called'}")
+    print(f"Статистика сохранена в файл {filename}")
 
 
-conn.commit()
-print("Таблицы созданы/проверены.")
+@count_calls
+def render(a, b, c):
+    return a + b + c
+
+@count_calls
+def show(text):
+    print(text)
+    return text
+
+@count_calls
+def process_data(data):
+    time.sleep(0.1)  # Симуляция работы
+    return len(data)
+
+import time
+
+# Вызовы функций (необходимо вызывать функции!)
+render(1, 2, 3)
+show("Hello, world!")
+render(4, 5, 6)
+process_data([1, 2, 3, 4, 5])
+show("Another message")
+render(10, 20, 30)
+process_data([1, 2, 3, 4, 5, 6, 7, 8])
 
 
-doctors_data = [
-  ("Иванов", "Иван", "Иванович", "Терапевт"),
-  ("Петрова", "Мария", "Петровна", "Кардиолог"),
-  ("Смирнов", "Алексей", "Сергеевич", "Хирург"),
-  ("Сидорова", "Елена", "Владимировна", "Невролог"),
-  ("Кузнецов", "Дмитрий", "Александрович", "Офтальмолог")
-]
-
-for doctor in doctors_data:
-  cur.execute("INSERT INTO Doctors (lastname, firstname, patronymic, specialty) VALUES (%s, %s, %s, %s)", doctor)
-conn.commit()
-print("Данные о врачах вставлены.")
-
-
-# Вставка данных для пациентов - расширенный список
-patients_data = [
-  ("Сидоров", "Петр", "Сидорович", "1990-03-15", "ул. Пушкина, 10", False),
-  ("Кузнецова", "Анна", "Сергеевна", "1985-11-20", "пр. Ленина, 5", True),
-  ("Васильев", "Иван", "Иванович", "1978-07-25", "ул. Грибоедова, 2", False),
-  ("Петрова", "Ольга", "Петровна", "1995-01-10", "ул. Некрасова, 15", True),
-  ("Михайлов", "Сергей", "Михайлович", "1982-09-05", "ул. Толстого, 8", False),
-  ("Соколова", "Светлана", "Александровна", "2000-04-22", "ул. Лермонтова, 3", False),
-  ("Андреев", "Андрей", "Андреевич", "1975-12-18", "ул. Чехова, 12", True),
-  ("Иванова", "Ирина", "Ивановна", "1992-06-02", "ул. Достоевского, 7", False),
-  ("Морозов", "Алексей", "Игоревич", "1988-08-11", "ул. Тургенева, 1", True),
-  ("Федорова", "Елена", "Юрьевна", "1971-05-01", "ул. Горького, 17", False),
-
-]
-
-for patient in patients_data:
-  cur.execute("INSERT INTO Patients (lastname, firstname, patronymic, birthdate, address, has_benefits) VALUES (%s, %s, %s, %s, %s, %s)", patient)
-conn.commit()
-print("Данные о пациентах вставлены.")
-
-
-# Запросы (без изменений)
-cur.execute("SELECT * FROM Doctors;")
-doctors = cur.fetchall()
-print("\nВрачи:")
-for doctor in doctors:
-  print(doctor)
-
-cur.execute("SELECT * FROM Patients;")
-patients = cur.fetchall()
-print("\nПациенты:")
-for patient in patients:
-  print(patient)
-
-cur.close()
-conn.close()
+save_stats()
