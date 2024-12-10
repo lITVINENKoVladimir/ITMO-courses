@@ -5,3 +5,8 @@
 f = open("text.txt" , "w")
 f.write("Hello")
 
+# Модификация
+
+with open("text.txt", "r") as f:
+    greeting = f.read().strip()
+print(greeting)
