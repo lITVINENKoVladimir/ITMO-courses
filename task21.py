@@ -10,13 +10,20 @@ template = """
 <!DOCTYPE HTML>
 <html>
  <head>
-  <title>Ter BODY</title>
-  <meta charset="utf-8">
+  <title>{title}</title>
+  <meta charset="{charset}">
  </head>
- <body onload="alert("Документ загружен успешно)">
+ <body onload="alert('{alert}')">
 
-  <p>Ut wisis enim ad minim veniam, suscipit lobortis nisl ut aliquip ex ea commodo consequat.</p>
+  <p>{p}</p>
 
  </body>
 </html>
 """
+
+filled_template = template.format(**page)
+
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(filled_template)
+
+print("index.html создан!")
